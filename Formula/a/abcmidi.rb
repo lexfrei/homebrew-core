@@ -19,6 +19,8 @@ class Abcmidi < Formula
     sha256 cellar: :any_skip_relocation, x86_64_linux:  "a7e18e30ba126e43de705ad6de42c36f6d3222c0524ebba31eba6f8fc64d56e9"
   end
 
+  deny_network_access!
+
   def install
     system "./configure", *std_configure_args
     system "make", "install"
