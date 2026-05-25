@@ -21,6 +21,8 @@ class Acl2 < Formula
 
   depends_on "sbcl"
 
+  deny_network_access!
+
   def install
     # Remove prebuilt binaries
     rm([
