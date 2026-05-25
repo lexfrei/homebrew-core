@@ -9,7 +9,7 @@ class Bun < Formula
     "MIT",
     "LGPL-2.0-or-later", # JavaScriptCore
 
-    # Other vendored libraries, https://github.com/oven-sh/bun/blob/main/LICENSE.md#linked-libraries
+    # Other libraries, https://github.com/oven-sh/bun/blob/main/LICENSE.md#linked-libraries
     # Ignoring ICU which is dynamically linked and reducing dual licenses to minimal set:
     "Apache-2.0",        # boringssl, simdutf, uSockets, highway, uWebsockets, Tigerbeetle
     "BSD-2-Clause",      # libarchive, libbase64, libspng
@@ -30,20 +30,19 @@ class Bun < Formula
   depends_on "ninja" => :build
   depends_on "rust" => :build
 
+  uses_from_macos "llvm" => :build
   uses_from_macos "perl" => :build # for webkit
   uses_from_macos "python" => :build # for webkit
   uses_from_macos "ruby" => :build # for webkit
   uses_from_macos "unzip" => :build
 
   on_linux do
-    depends_on "git" => :build # needs newer git for clang-cl-arm64.patch
     depends_on "lld@21" => :build
     depends_on "icu4c@78"
   end
 
   fails_with :gcc do
-    version "10"
-    cause "Needs C++20 features like std::span"
+    cause "uses clang-specific flags"
   end
 
   # Bootstrap with the same Bun version as upstream CI
@@ -96,17 +95,6 @@ class Bun < Formula
 
     # Avoid `rustup` dependency by removing usage of nightly Rust features
     inreplace "scripts/build/deps/lolhtml.ts", "if (cfg.release && canBuildStdImmediateAbort)", "if (false)"
-
-    if OS.linux?
-      icu4c = deps.map(&:to_formula).find { |f| f.name.match?(/^icu4c@\d+$/) }
-      ENV.append_to_cflags "-I#{icu4c.opt_include}"
-
-      # Needs actual clang++ on PATH. Not using compiler selection here to avoid
-      # worst-case situation of having to install 3 different LLVM versions when
-      # Bun and Rust both need versioned LLVM formulae but different versions.
-      # Can reconsider if we add versioned LLVM support to compiler selection.
-      ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin
-    end
 
     fetch_webkit
     resource("bootstrap").stage("bootstrap")
