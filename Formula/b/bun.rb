@@ -30,7 +30,6 @@ class Bun < Formula
   depends_on "ninja" => :build
   depends_on "rust" => :build
 
-  uses_from_macos "llvm" => :build
   uses_from_macos "perl" => :build # for webkit
   uses_from_macos "python" => :build # for webkit
   uses_from_macos "ruby" => :build # for webkit
@@ -42,7 +41,8 @@ class Bun < Formula
   end
 
   fails_with :gcc do
-    cause "uses clang-specific flags"
+    version "10"
+    cause "Needs C++20 features like std::span"
   end
 
   # Bootstrap with the same Bun version as upstream CI
@@ -95,6 +95,20 @@ class Bun < Formula
 
     # Avoid `rustup` dependency by removing usage of nightly Rust features
     inreplace "scripts/build/deps/lolhtml.ts", "if (cfg.release && canBuildStdImmediateAbort)", "if (false)"
+
+    if OS.linux?
+      icu4c = deps.map(&:to_formula).find { |f| f.name.match?(/^icu4c@\d+$/) }
+      ENV.append_path "C_INCLUDE_PATH", icu4c.opt_include
+      ENV.append_path "CPLUS_INCLUDE_PATH", icu4c.opt_include
+
+      # Needs actual clang++ on PATH. Not using compiler selection here to avoid
+      # worst-case situation of having to install 3 different LLVM versions when
+      # Bun and Rust both need versioned LLVM formulae but different versions.
+      # Can reconsider if we add versioned LLVM support to compiler selection.
+      ENV.prepend_path "PATH", Formula["llvm@21"].opt_bin
+      ENV["CC"] = Formula["llvm@21"].opt_bin/"clang"
+      ENV["CXX"] = Formula["llvm@21"].opt_bin/"clang++"
+    end
 
     fetch_webkit
     resource("bootstrap").stage("bootstrap")
